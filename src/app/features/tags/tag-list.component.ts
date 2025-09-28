@@ -16,11 +16,9 @@ export class TagListComponent implements OnInit {
   tags: Tag[] = [];
   tagsFiltradas: Tag[] = [];
   tagSelecionada: Tag | null = null;
+  loading = false;
 
-  // Filtro MÍNIMO para Tags - apenas nome
-  filtro = {
-    nome: ''
-  };
+  filtro = { nome: '' };
 
   constructor(private tagsService: TagsService) {}
 
@@ -28,28 +26,34 @@ export class TagListComponent implements OnInit {
     this.carregarTags();
   }
 
+  // === Auxiliar para erros ===
+  private mostrarErro(mensagem: string, err?: any): void {
+    console.error(mensagem, err);
+    Swal.fire('Erro', mensagem, 'error');
+  }
+
   carregarTags(): void {
+    this.loading = true;
     this.tagsService.listar().subscribe({
       next: (data: Tag[]) => {
         this.tags = data;
-        this.tagsFiltradas = [...data]; // Inicializa com todas as tags
+        this.tagsFiltradas = [...data];
+        this.loading = false;
       },
       error: (err: any) => {
-        console.error('Erro ao carregar tags', err);
-        Swal.fire('Erro', 'Não foi possível carregar as tags', 'error');
-      }
+        this.mostrarErro('Não foi possível carregar as tags', err);
+        this.loading = false;
+      },
     });
   }
 
-  // === MÉTODOS DE FILTRO SIMPLIFICADOS PARA TAGS ===
-
+  // === Filtros ===
   aplicarFiltros(): void {
     if (!this.filtro.nome) {
       this.tagsFiltradas = [...this.tags];
       return;
     }
-
-    this.tagsFiltradas = this.tags.filter(tag => 
+    this.tagsFiltradas = this.tags.filter(tag =>
       tag.nome.toLowerCase().includes(this.filtro.nome.toLowerCase())
     );
   }
@@ -63,8 +67,7 @@ export class TagListComponent implements OnInit {
     return !!this.filtro.nome;
   }
 
-  // === MÉTODOS CRUD (mantidos originais) ===
-
+  // === CRUD ===
   novaTag(): void {
     this.tagSelecionada = { nome: '' };
   }
@@ -88,8 +91,7 @@ export class TagListComponent implements OnInit {
             Swal.fire('Excluída!', 'Tag removida com sucesso.', 'success');
             this.carregarTags();
           },
-          error: () =>
-            Swal.fire('Erro', 'Não foi possível excluir a tag', 'error'),
+          error: (err) => this.mostrarErro('Não foi possível excluir a tag', err),
         });
       }
     });
@@ -98,8 +100,7 @@ export class TagListComponent implements OnInit {
   salvar(): void {
     if (!this.tagSelecionada) return;
 
-    // Validação básica
-    if (!this.tagSelecionada.nome || this.tagSelecionada.nome.trim() === '') {
+    if (!this.tagSelecionada.nome?.trim()) {
       Swal.fire('Erro', 'O nome da tag é obrigatório.', 'error');
       return;
     }
@@ -114,7 +115,7 @@ export class TagListComponent implements OnInit {
         this.carregarTags();
         this.tagSelecionada = null;
       },
-      error: () => Swal.fire('Erro', 'Não foi possível salvar a tag', 'error'),
+      error: (err) => this.mostrarErro('Não foi possível salvar a tag', err),
     });
   }
 

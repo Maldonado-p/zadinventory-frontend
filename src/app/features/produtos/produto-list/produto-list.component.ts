@@ -20,7 +20,7 @@ import { Tag } from '../../../shared/models/tag';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './produto-list.component.html',
-  styleUrls: ['./produto-list.component.scss']
+  styleUrls: ['./produto-list.component.scss'],
 })
 export class ProdutoListComponent implements OnInit {
   produtos: Produto[] = [];
@@ -31,13 +31,14 @@ export class ProdutoListComponent implements OnInit {
   usuarios: Usuario[] = [];
   tagsDisponiveis: Tag[] = [];
 
-  // Objeto para armazenar os filtros
- filtro = {
-  nome: '',
-  categoriaId: null as number | null,
-  precoMaximo: null as number | null,
-  tagsIds: [] as number[]  // Sempre será um array, nunca undefined
-};
+  isLoading = false;
+
+  filtro = {
+    nome: '',
+    categoriaId: null as number | null,
+    precoMaximo: null as number | null,
+    tagsIds: [] as number[],
+  };
 
   constructor(
     private produtoService: ProdutosService,
@@ -57,84 +58,80 @@ export class ProdutoListComponent implements OnInit {
     this.produtoService.listar().subscribe({
       next: (data: Produto[]) => {
         this.produtos = data;
-        this.produtosFiltrados = [...data]; // Inicializa com todos os produtos
+        this.produtosFiltrados = [...data];
       },
       error: (err) => {
         console.error('Erro ao carregar produtos', err);
         Swal.fire('Erro', 'Não foi possível carregar os produtos', 'error');
-      }
+      },
     });
   }
 
   carregarCategorias(): void {
     this.categoriaService.listar().subscribe({
       next: (data: Categoria[]) => (this.categorias = data),
-      error: (err) => console.error('Erro ao carregar categorias', err)
+      error: (err) => {
+        console.error('Erro ao carregar categorias', err);
+        Swal.fire('Erro', 'Falha ao carregar categorias', 'error');
+      },
     });
   }
 
   carregarUsuarios(): void {
     this.usuarioService.listar().subscribe({
       next: (data: Usuario[]) => (this.usuarios = data),
-      error: (err) => console.error('Erro ao carregar usuarios', err)
+      error: (err) => {
+        console.error('Erro ao carregar usuários', err);
+        Swal.fire('Erro', 'Falha ao carregar usuários', 'error');
+      },
     });
   }
 
   carregarTags(): void {
     this.tagService.listar().subscribe({
       next: (data: Tag[]) => (this.tagsDisponiveis = data),
-      error: (err) => console.error('Erro ao carregar tags', err)
+      error: (err) => {
+        console.error('Erro ao carregar tags', err);
+        Swal.fire('Erro', 'Falha ao carregar tags', 'error');
+      },
     });
   }
 
-  // === MÉTODOS DE FILTRO ===
-
+  // === FILTROS ===
   aplicarFiltros(): void {
-  this.produtosFiltrados = this.produtos.filter(produto => {
-    // Filtro por nome (case insensitive)
-    if (this.filtro.nome && 
-        !produto.nome.toLowerCase().includes(this.filtro.nome.toLowerCase())) {
-      return false;
-    }
-
-    // Filtro por categoria - CORRIGIDO
-    if (this.filtro.categoriaId !== null && this.filtro.categoriaId !== undefined) {
-      const categoriaIdFiltro = Number(this.filtro.categoriaId);
-      const categoriaIdProduto = produto.categoria?.id;
-      
-      // console.log para debug (remova depois)
-      console.log('Filtrando categoria:', {
-        filtro: categoriaIdFiltro,
-        produto: categoriaIdProduto,
-        iguais: categoriaIdProduto === categoriaIdFiltro
-      });
-      
-      if (categoriaIdProduto !== categoriaIdFiltro) {
+    this.produtosFiltrados = this.produtos.filter((produto) => {
+      if (
+        this.filtro.nome &&
+        !produto.nome.toLowerCase().includes(this.filtro.nome.toLowerCase())
+      ) {
         return false;
       }
-    }
 
-    // Filtro por preço máximo - TAMBÉM PODE TER O MESMO PROBLEMA
-    if (this.filtro.precoMaximo !== null && 
-        this.filtro.precoMaximo !== undefined) {
-      const precoMaximo = Number(this.filtro.precoMaximo);
-      if ((produto.preco ?? 0) > precoMaximo) {
+      if (
+        this.filtro.categoriaId !== null &&
+        produto.categoria?.id !== this.filtro.categoriaId
+      ) {
         return false;
       }
-    }
+      if (
+        this.filtro.precoMaximo !== null &&
+        (produto.preco ?? 0) > this.filtro.precoMaximo
+      ) {
+        return false;
+      }
 
-    // Filtro por tags
-    if (this.filtro.tagsIds.length > 0) {
-      const produtoTagsIds = produto.tags?.map(t => t.id).filter(id => id !== undefined) || [];
-      const temTodasTags = this.filtro.tagsIds.every(tagId => 
-        produtoTagsIds.includes(tagId)
-      );
-      if (!temTodasTags) return false;
-    }
+      if (this.filtro.tagsIds.length > 0) {
+        const produtoTagsIds =
+          produto.tags?.map((t) => t.id).filter((id) => id !== undefined) || [];
+        const temTodasTags = this.filtro.tagsIds.every((tagId) =>
+          produtoTagsIds.includes(tagId)
+        );
+        if (!temTodasTags) return false;
+      }
 
-    return true;
-  });
-}
+      return true;
+    });
+  }
 
   toggleTagFiltro(tag: Tag): void {
     if (!tag.id) return;
@@ -145,29 +142,30 @@ export class ProdutoListComponent implements OnInit {
     } else {
       this.filtro.tagsIds.push(tag.id);
     }
-    
+
     this.aplicarFiltros();
   }
 
   limparFiltros(): void {
-  this.filtro = {
-    nome: '',
-    categoriaId: null,
-    precoMaximo: null,
-    tagsIds: []  // Garante que sempre retorne um array vazio
-  };
-  this.produtosFiltrados = [...this.produtos];
-}
-
-  temFiltrosAtivos(): boolean {
-    return !!this.filtro.nome || 
-           this.filtro.categoriaId !== null || 
-           this.filtro.precoMaximo !== null || 
-           this.filtro.tagsIds.length > 0;
+    this.filtro = {
+      nome: '',
+      categoriaId: null,
+      precoMaximo: null,
+      tagsIds: [],
+    };
+    this.produtosFiltrados = [...this.produtos];
   }
 
-  // === MÉTODOS CRUD ===
+  temFiltrosAtivos(): boolean {
+    return (
+      !!this.filtro.nome ||
+      this.filtro.categoriaId !== null ||
+      this.filtro.precoMaximo !== null ||
+      this.filtro.tagsIds.length > 0
+    );
+  }
 
+  // === CRUD ===
   novoProduto(): void {
     this.produtoSelecionado = {
       nome: '',
@@ -176,7 +174,7 @@ export class ProdutoListComponent implements OnInit {
       preco: 0,
       categoria: null,
       usuario: null,
-      tags: []
+      tags: [],
     } as Produto;
   }
 
@@ -185,7 +183,7 @@ export class ProdutoListComponent implements OnInit {
       ...produto,
       categoria: produto.categoria ? { ...produto.categoria } : null,
       usuario: produto.usuario ? { ...produto.usuario } : null,
-      tags: produto.tags ? produto.tags.map(t => ({ ...t })) : []
+      tags: produto.tags ? produto.tags.map((t) => ({ ...t })) : [],
     } as Produto;
   }
 
@@ -202,14 +200,19 @@ export class ProdutoListComponent implements OnInit {
       showCancelButton: true,
       confirmButtonText: 'Sim, excluir!',
       cancelButtonText: 'Cancelar',
-    }).then(result => {
+    }).then((result) => {
       if (result.isConfirmed) {
         this.produtoService.excluir(produto.id!).subscribe({
           next: () => {
             Swal.fire('Excluído!', 'Produto removido com sucesso.', 'success');
-            this.carregarProdutos(); // Recarrega a lista
+            this.carregarProdutos();
           },
-          error: () => Swal.fire('Erro', 'Não foi possível excluir', 'error')
+          error: (err) => {
+            console.error('Erro ao excluir produto', err);
+            const mensagemErro =
+              err.error?.message || 'Não foi possível excluir o produto';
+            Swal.fire('Erro', mensagemErro, 'error');
+          },
         });
       }
     });
@@ -218,16 +221,26 @@ export class ProdutoListComponent implements OnInit {
   salvar(): void {
     if (!this.produtoSelecionado) return;
 
-    if (!this.produtoSelecionado.nome || !this.produtoSelecionado.categoria || !this.produtoSelecionado.usuario) {
+    if (
+      !this.produtoSelecionado.nome ||
+      !this.produtoSelecionado.categoria ||
+      !this.produtoSelecionado.usuario
+    ) {
       Swal.fire('Erro', 'Nome, categoria e usuário são obrigatórios.', 'error');
       return;
     }
 
-    // garantir número com 2 casas
-    this.produtoSelecionado.preco = Number(Number(this.produtoSelecionado.preco).toFixed(2));
+    this.produtoSelecionado.preco = Number(
+      Number(this.produtoSelecionado.preco).toFixed(2)
+    );
+
+    this.isLoading = true;
 
     const req = this.produtoSelecionado.id
-      ? this.produtoService.atualizar(this.produtoSelecionado.id, this.produtoSelecionado)
+      ? this.produtoService.atualizar(
+          this.produtoSelecionado.id,
+          this.produtoSelecionado
+        )
       : this.produtoService.criar(this.produtoSelecionado);
 
     req.subscribe({
@@ -236,22 +249,27 @@ export class ProdutoListComponent implements OnInit {
         this.carregarProdutos();
         this.fecharModal();
       },
-      error: err => {
-        console.error(err);
-        Swal.fire('Erro', 'Não foi possível salvar', 'error');
-      }
+      error: (err) => {
+        console.error('Erro ao salvar produto', err);
+        const mensagemErro =
+          err.error?.message || 'Não foi possível salvar o produto';
+        Swal.fire('Erro', mensagemErro, 'error');
+      },
+      complete: () => {
+        this.isLoading = false;
+      },
     });
   }
 
   fecharModal(): void {
     this.produtoSelecionado = null;
+    this.isLoading = false;
   }
 
-  // Tags helpers
+  // === TAGS ===
   isTagSelected(tag: Tag): boolean {
-    if (!this.produtoSelecionado || !this.produtoSelecionado.tags) return false;
-    if (tag.id == null) return false;
-    return this.produtoSelecionado.tags.some(t => t.id === tag.id);
+    if (!this.produtoSelecionado?.tags) return false;
+    return !!this.produtoSelecionado.tags.some((t) => t.id === tag.id);
   }
 
   toggleTag(tag: Tag, event: Event): void {
@@ -261,17 +279,19 @@ export class ProdutoListComponent implements OnInit {
     const input = event.target as HTMLInputElement | null;
     const checked = input?.checked ?? false;
 
-    if (tag.id == null) {
-      console.warn('toggleTag chamado com tag sem id — ignorando', tag);
+    if (!tag.id) {
+      console.warn('Tag sem ID ignorada', tag);
       return;
     }
 
     if (checked) {
-      if (!this.produtoSelecionado.tags.some(t => t.id === tag.id)) {
+      if (!this.produtoSelecionado.tags.some((t) => t.id === tag.id)) {
         this.produtoSelecionado.tags.push({ id: tag.id, nome: tag.nome });
       }
     } else {
-      this.produtoSelecionado.tags = this.produtoSelecionado.tags.filter(t => t.id !== tag.id);
+      this.produtoSelecionado.tags = this.produtoSelecionado.tags.filter(
+        (t) => t.id !== tag.id
+      );
     }
   }
 }

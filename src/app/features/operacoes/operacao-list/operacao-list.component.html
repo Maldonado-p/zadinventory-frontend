@@ -99,7 +99,10 @@
         <button class="btn btn-secondary" (click)="fecharModal()">
           Cancelar
         </button>
-        <button class="btn btn-success" (click)="salvar()">Salvar</button>
+        <button class="btn btn-success" (click)="salvar()" [disabled]="isLoading">
+        <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+        Salvar 
+        </button>
       </div>
     </div>
   </div>

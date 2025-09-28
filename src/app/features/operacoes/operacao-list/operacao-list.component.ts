@@ -15,6 +15,7 @@ import { Operacao } from '../../../shared/models/operacao';
 export class OperacaoListComponent implements OnInit {
   operacoes: Operacao[] = [];
   operacaoSelecionada: Operacao | null = null;
+  isLoading = false;
 
   constructor(private operacoesService: OperacoesService) {}
 
@@ -24,17 +25,23 @@ export class OperacaoListComponent implements OnInit {
 
   carregarOperacoes(): void {
     this.operacoesService.listar().subscribe({
-      next: (data) => (this.operacoes = data),
-      error: (err) => console.error('Erro ao carregar operações', err),
+      next: (data: Operacao[]) => {
+        this.operacoes = data;
+      },
+      error: (err) => {
+        console.error('Erro ao carregar operações', err);
+        const mensagemErro =
+          err.error?.message || 'Não foi possível carregar as operações';
+        Swal.fire('Erro', mensagemErro, 'error');
+      },
     });
   }
 
   novaOperacao(): void {
     this.operacaoSelecionada = {
-      id: 0,
-      tipo: 'ENTRADA', // ou SAIDA, valor inicial
+      tipo: 'ENTRADA',
       valor: 0,
-      data: new Date().toISOString().split('T')[0], // data no formato yyyy-MM-dd
+      data: new Date().toISOString().split('T')[0], // formato "YYYY-MM-DD"
       descricao: '',
     };
   }
@@ -46,7 +53,7 @@ export class OperacaoListComponent implements OnInit {
   excluir(operacao: Operacao): void {
     Swal.fire({
       title: 'Tem certeza?',
-      text: `Excluir operação "${operacao.descricao}"?`,
+      text: `Excluir operação #${operacao.id}?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sim, excluir!',
@@ -55,11 +62,19 @@ export class OperacaoListComponent implements OnInit {
       if (result.isConfirmed) {
         this.operacoesService.excluir(operacao.id!).subscribe({
           next: () => {
-            Swal.fire('Excluída!', 'Operação removida com sucesso.', 'success');
+            Swal.fire(
+              'Excluída!',
+              'Operação removida com sucesso.',
+              'success'
+            );
             this.carregarOperacoes();
           },
-          error: () =>
-            Swal.fire('Erro', 'Não foi possível excluir a operação', 'error'),
+          error: (err) => {
+            console.error('Erro ao excluir operação', err);
+            const mensagemErro =
+              err.error?.message || 'Não foi possível excluir a operação';
+            Swal.fire('Erro', mensagemErro, 'error');
+          },
         });
       }
     });
@@ -68,9 +83,11 @@ export class OperacaoListComponent implements OnInit {
   salvar(): void {
     if (!this.operacaoSelecionada) return;
 
+    this.isLoading = true;
+
     const req = this.operacaoSelecionada.id
       ? this.operacoesService.atualizar(
-          this.operacaoSelecionada.id!,
+          this.operacaoSelecionada.id,
           this.operacaoSelecionada
         )
       : this.operacoesService.criar(this.operacaoSelecionada);
@@ -79,14 +96,22 @@ export class OperacaoListComponent implements OnInit {
       next: () => {
         Swal.fire('Sucesso', 'Operação salva com sucesso!', 'success');
         this.carregarOperacoes();
-        this.operacaoSelecionada = null;
+        this.fecharModal();
       },
-      error: () =>
-        Swal.fire('Erro', 'Não foi possível salvar a operação', 'error'),
+      error: (err) => {
+        console.error('Erro ao salvar operação', err);
+        const mensagemErro =
+          err.error?.message || 'Não foi possível salvar a operação';
+        Swal.fire('Erro', mensagemErro, 'error');
+      },
+      complete: () => {
+        this.isLoading = false;
+      },
     });
   }
 
   fecharModal(): void {
     this.operacaoSelecionada = null;
+    this.isLoading = false;
   }
 }

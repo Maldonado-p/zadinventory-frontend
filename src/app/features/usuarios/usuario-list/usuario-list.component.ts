@@ -17,11 +17,10 @@ export class UsuarioListComponent implements OnInit {
   usuariosFiltrados: Usuario[] = [];
   usuarioSelecionado: Usuario | null = null;
 
-  // Filtros PERSONALIZADOS para Usuários
-  filtro = {
+filtro = {
     nome: '',
     email: '',
-    tipoUsuario: null as string | null
+    tipoUsuario: null as string | null,
   };
 
   constructor(private usuarioService: UsuariosService) {}
@@ -34,64 +33,60 @@ export class UsuarioListComponent implements OnInit {
     this.usuarioService.listar().subscribe({
       next: (data: Usuario[]) => {
         this.usuarios = data;
-        this.usuariosFiltrados = [...data]; // Inicializa com todos os usuários
+        this.usuariosFiltrados = [...data];
       },
       error: (err) => {
-        console.error('Erro ao carregar usuários', err);
-        Swal.fire('Erro', 'Não foi possível carregar os usuários', 'error');
-      }
+        console.error('Erro ao carregar usuários:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Não foi possível carregar os usuários. Tente novamente mais tarde.',
+        });
+      },
     });
   }
-
-  // === MÉTODOS DE FILTRO PERSONALIZADOS PARA USUÁRIOS ===
-
-  aplicarFiltros(): void {
-    this.usuariosFiltrados = this.usuarios.filter(usuario => {
-      // Filtro por nome (case insensitive)
-      if (this.filtro.nome && 
-          !usuario.nome.toLowerCase().includes(this.filtro.nome.toLowerCase())) {
+aplicarFiltros(): void {
+    this.usuariosFiltrados = this.usuarios.filter((usuario) => {
+      if (
+        this.filtro.nome &&
+        !usuario.nome.toLowerCase().includes(this.filtro.nome.toLowerCase())
+      ) {
         return false;
       }
-
-      // Filtro por email (case insensitive)
-      if (this.filtro.email && 
-          !usuario.email.toLowerCase().includes(this.filtro.email.toLowerCase())) {
+      if (
+        this.filtro.email &&
+        !usuario.email.toLowerCase().includes(this.filtro.email.toLowerCase())
+      ) {
         return false;
       }
-
-      // Filtro por tipo de usuário
-      if (this.filtro.tipoUsuario !== null && 
-          this.filtro.tipoUsuario !== undefined) {
-        if (usuario.tipoUsuario !== this.filtro.tipoUsuario) {
-          return false;
-        }
+      if (
+        this.filtro.tipoUsuario !== null &&
+        usuario.tipoUsuario !== this.filtro.tipoUsuario
+      ) {
+        return false;
       }
-
-      return true;
+            return true;
     });
   }
 
   limparFiltros(): void {
-    this.filtro = {
-      nome: '',
-      email: '',
-      tipoUsuario: null
-    };
+    this.filtro = { nome: '', email: '', tipoUsuario: null };
     this.usuariosFiltrados = [...this.usuarios];
   }
 
   temFiltrosAtivos(): boolean {
-    return !!this.filtro.nome || !!this.filtro.email || this.filtro.tipoUsuario !== null;
+    return (
+      !!this.filtro.nome ||
+      !!this.filtro.email ||
+      this.filtro.tipoUsuario !== null
+    );
   }
-
-  // === MÉTODOS CRUD (mantidos originais com pequenos ajustes) ===
-
-  novoUsuario(): void {
+novoUsuario(): void {
     this.usuarioSelecionado = {
       nome: '',
       email: '',
       senha: '',
-      tipoUsuario: 'FUNCIONARIO'
+      tipoUsuario: 'FUNCIONARIO',
     } as Usuario;
   }
 
@@ -101,7 +96,11 @@ export class UsuarioListComponent implements OnInit {
 
   excluir(usuario: Usuario): void {
     if (!usuario.id) {
-      Swal.fire('Erro', 'Usuário sem ID válido.', 'error');
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: 'Usuário sem ID válido.',
+      });
       return;
     }
 
@@ -114,12 +113,19 @@ export class UsuarioListComponent implements OnInit {
       cancelButtonText: 'Cancelar',
     }).then((result) => {
       if (result.isConfirmed) {
-        this.usuarioService.excluir(usuario.id).subscribe({
+        this.usuarioService.excluir(usuario.id!).subscribe({
           next: () => {
             Swal.fire('Excluído!', 'Usuário removido com sucesso.', 'success');
             this.carregarUsuarios();
           },
-          error: () => Swal.fire('Erro', 'Não foi possível excluir', 'error'),
+          error: (err) => {
+            console.error('Erro ao excluir usuário:', err);
+            Swal.fire({
+              icon: 'error',
+              title: 'Erro',
+              text: 'Não foi possível excluir o usuário.',
+            });
+          },
         });
       }
     });
@@ -128,9 +134,12 @@ export class UsuarioListComponent implements OnInit {
   salvar(): void {
     if (!this.usuarioSelecionado) return;
 
-    // Validações básicas
-    if (!this.usuarioSelecionado.nome || !this.usuarioSelecionado.email) {
-      Swal.fire('Erro', 'Nome e email são obrigatórios.', 'error');
+  if (!this.usuarioSelecionado.nome || !this.usuarioSelecionado.email) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: 'Nome e e-mail são obrigatórios.',
+      });
       return;
     }
 
@@ -147,7 +156,14 @@ export class UsuarioListComponent implements OnInit {
         this.carregarUsuarios();
         this.usuarioSelecionado = null;
       },
-      error: () => Swal.fire('Erro', 'Não foi possível salvar', 'error'),
+      error: (err) => {
+        console.error('Erro ao salvar usuário:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Não foi possível salvar o usuário. Verifique os dados e tente novamente.',
+        });
+      },
     });
   }
 
